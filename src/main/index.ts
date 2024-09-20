@@ -68,9 +68,22 @@ app.whenReady().then(() => {
     }
   })
 
+  type Error = {
+    code: string
+    message?: string
+    description: string
+  }
+
   ipcMain.handle('request', async (_, subject, data) => {
     if (nc) {
       const res = await nc.request(subject, codec.encode(data))
+      if (res.headers?.get('Nats-Service-Error-Code')) {
+        return {
+          code: res.headers?.get('Nats-Service-Error-Code'),
+          description: res.headers?.get('Nats-Service-Error'),
+          message: String(res.data)
+        } as Error
+      }
       const json = codec.decode(res.data)
       console.log(json)
       return json
