@@ -56,7 +56,8 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.handle('connect', async (_, natsUrl) => {
     nc = await connect({
-      servers: natsUrl
+      servers: natsUrl,
+      reconnect: true
     })
   })
 
