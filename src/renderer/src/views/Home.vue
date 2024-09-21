@@ -80,7 +80,10 @@ import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
 import JsonEditorVue from 'json-editor-vue'
 import { useDark, useToggle } from '@vueuse/core'
+import { useToast } from '@renderer/components/ui/toast/use-toast'
+import { useGlobalState } from '@renderer/composables/store'
 
+const state = useGlobalState()
 const isDark = useDark()
 const natsUrl = ref<string>('')
 const status = ref<boolean>(false)
@@ -90,26 +93,45 @@ const currentPublisher = ref<Publisher | null>(null)
 
 const toggleDark = useToggle(isDark)
 
+const { toast } = useToast()
+
 const connect = async () => {
   try {
+    state.loading.value = true
     await window.api.connect(natsUrl.value)
     status.value = true
+    toast({
+      duration: 5000,
+      title: 'Nats Connection',
+      description: 'Connected successfully'
+    })
   } catch (error) {
     console.error(error)
+  } finally {
+    state.loading.value = false
   }
 }
 
 const disconnect = async () => {
   try {
+    state.loading.value = true
     await window.api.disconnect(natsUrl.value)
     status.value = false
+    toast({
+      duration: 5000,
+      title: 'Nats Connection',
+      description: 'Disconnected successfully'
+    })
   } catch (error) {
     console.error(error)
+  } finally {
+    state.loading.value = false
   }
 }
 
 const request = async () => {
   try {
+    state.loading.value = true
     if (currentPublisher.value) {
       if (currentPublisher.value?.payload) {
         const res = await window.api.request(
@@ -123,6 +145,8 @@ const request = async () => {
     }
   } catch (error) {
     console.error(error)
+  } finally {
+    state.loading.value = false
   }
 }
 
@@ -150,6 +174,24 @@ const remove = () => {
   currentPublisher.value = publishers.value[selectedPublisher.value]
   window.localStorage.setItem('publishers', JSON.stringify(publishers.value))
 }
+
+window.api.onDisconnected(() => {
+  status.value = false
+  toast({
+    duration: 5000,
+    title: 'Nats Connection',
+    description: 'Disconnected'
+  })
+})
+
+window.api.onReconnected(() => {
+  status.value = true
+  toast({
+    duration: 5000,
+    title: 'Nats Connection',
+    description: 'Reconnected'
+  })
+})
 
 const publishers = ref<Publisher[]>([])
 onMounted(() => {

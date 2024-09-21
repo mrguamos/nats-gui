@@ -2,14 +2,15 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { connect, NatsConnection, JSONCodec } from 'nats'
+import { connect } from '@nats-io/transport-node'
+import * as nats from '@nats-io/nats-core'
 
-let nc: NatsConnection | null = null
-const codec = JSONCodec()
-
+let nc: nats.NatsConnection | null = null
+const codec = nats.JSONCodec()
+let mainWindow: BrowserWindow
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -62,7 +63,23 @@ app.whenReady().then(() => {
       servers: natsUrl,
       reconnect: true
     })
+    natsStatus()
   })
+
+  async function natsStatus() {
+    if (nc) {
+      for await (const s of nc.status()) {
+        switch (s.type) {
+          case nats.Events.Disconnect:
+            mainWindow.webContents.send('nats-disconnected')
+            break
+          case nats.Events.Reconnect:
+            mainWindow.webContents.send('nats-reconnected')
+            break
+        }
+      }
+    }
+  }
 
   ipcMain.handle('disconnect', () => {
     if (nc) {
