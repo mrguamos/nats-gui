@@ -22,6 +22,9 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    if (nc) {
+      nc.close()
+    }
     mainWindow.show()
   })
 
@@ -85,7 +88,6 @@ app.whenReady().then(() => {
         } as Error
       }
       const json = codec.decode(res.data)
-      console.log(json)
       return json
     }
     throw new Error('NATS connection is not established.')

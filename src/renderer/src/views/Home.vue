@@ -1,6 +1,6 @@
 <template>
-  <ResizablePanelGroup class="min-h-screen" direction="horizontal">
-    <ResizablePanel class="border-r" :default-size="25">
+  <div class="h-screen">
+    <div class="border-r fixed h-full top-0 left-0 w-80 overflow-y-auto">
       <div class="flex flex-col items-center">
         <div class="mb-10 mt-10">
           <Sunny v-show="isDark" class="hover:cursor-pointer w-5 h-5" @click="toggleDark()"></Sunny>
@@ -11,7 +11,7 @@
         <Button
           v-for="(publisher, idx) in publishers"
           :key="idx"
-          class="mb-2"
+          class="block mb-2 max-w-72 w-full overflow-ellipsis overflow-hidden"
           :class="{ 'bg-secondary': selectedPublisher === idx }"
           variant="ghost"
           @click="
@@ -20,63 +20,64 @@
               currentPublisher = publishers[selectedPublisher]
             }
           "
-          >{{ publisher.name }}</Button
+          >{{ publisher.subject }}</Button
         >
       </div>
-    </ResizablePanel>
-
-    <ResizablePanel :default-size="75">
-      <div v-if="currentPublisher" class="flex grow flex-col gap-y-5 p-10">
-        <Card class="">
-          <CardHeader>
-            <CardTitle>Nats Connection</CardTitle>
-          </CardHeader>
-          <CardContent class="flex items-center gap-x-2">
-            <Input v-model="natsUrl" placeholder="nats://localhost:4222" />
-            <Button :disabled="status" @click="connect()">Connect</Button>
-            <Button :disabled="!status" @click="disconnect()">Disconnect</Button>
-          </CardContent>
-        </Card>
-        <Card class="">
-          <CardHeader>
-            <CardTitle>Publish Message</CardTitle>
-          </CardHeader>
-          <CardContent class="flex flex-col gap-y-3">
-            <Input v-model="currentPublisher.subject" placeholder="Subject" />
-            <JsonEditorVue
-              v-model="currentPublisher.payload"
-              :status-bar="false"
-              :class="{ 'jse-theme-dark': isDark }"
-              mode="text"
-              :navigation-bar="false"
-              :main-menu-bar="false"
-            />
-            <Button class="self-start" :disabled="!status" @click="request()">Publish</Button>
-          </CardContent>
-        </Card>
-        <Card class="">
-          <CardHeader>
-            <CardTitle>Response</CardTitle>
-          </CardHeader>
-          <CardContent class="">
-            <div class="overflow-x-auto">
-              <pre class="">{{ currentPublisher?.response }}</pre>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </ResizablePanel>
-  </ResizablePanelGroup>
+    </div>
+    <div v-if="currentPublisher" class="ml-80">
+      <Card class="">
+        <CardHeader>
+          <CardTitle>Nats Connection</CardTitle>
+        </CardHeader>
+        <CardContent class="flex items-center gap-x-2">
+          <Input v-model="natsUrl" placeholder="nats://localhost:4222" />
+          <Button :disabled="status" @click="connect()">Connect</Button>
+          <Button :disabled="!status" @click="disconnect()">Disconnect</Button>
+        </CardContent>
+      </Card>
+      <Card class="">
+        <CardHeader>
+          <CardTitle>Publish Message</CardTitle>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-y-3">
+          <Input v-model="currentPublisher.subject" placeholder="Subject" />
+          <JsonEditorVue
+            v-model="currentPublisher.payload"
+            :status-bar="false"
+            :class="{ 'jse-theme-dark': isDark }"
+            mode="text"
+            :navigation-bar="false"
+            :main-menu-bar="false"
+          />
+        </CardContent>
+        <CardFooter class="flex justify-between">
+          <Button :disabled="!status" @click="request()">Publish</Button>
+          <Button :disabled="publishers.length === 1" variant="outline" @click="remove()">
+            Delete
+          </Button>
+        </CardFooter>
+      </Card>
+      <Card class="">
+        <CardHeader>
+          <CardTitle>Response</CardTitle>
+        </CardHeader>
+        <CardContent class="">
+          <div class="overflow-x-auto">
+            <pre class="">{{ currentPublisher?.response }}</pre>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import Sunny from '@renderer/components/Sunny.vue'
 import Moon from '@renderer/components/Moon.vue'
 import { onMounted, ref } from 'vue'
-import { Card, CardHeader, CardTitle, CardContent } from '@renderer/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
-import { ResizablePanelGroup, ResizablePanel } from '@renderer/components/ui/resizable'
 import JsonEditorVue from 'json-editor-vue'
 import { useDark, useToggle } from '@vueuse/core'
 
@@ -110,14 +111,15 @@ const disconnect = async () => {
 const request = async () => {
   try {
     if (currentPublisher.value) {
+      if (currentPublisher.value?.payload) {
+        const res = await window.api.request(
+          currentPublisher.value?.subject,
+          JSON.parse(currentPublisher.value.payload)
+        )
+        currentPublisher.value.response = JSON.stringify(res, null, 2)
+      }
       publishers.value[selectedPublisher.value] = currentPublisher.value
-    }
-    if (currentPublisher.value?.payload) {
-      const res = await window.api.request(
-        currentPublisher.value?.subject,
-        JSON.parse(currentPublisher.value.payload)
-      )
-      currentPublisher.value.response = JSON.stringify(res, null, 2)
+      window.localStorage.setItem('publishers', JSON.stringify(publishers.value))
     }
   } catch (error) {
     console.error(error)
@@ -125,23 +127,39 @@ const request = async () => {
 }
 
 type Publisher = {
-  name: string
-  subject?: string
+  subject: string
   payload?: string
   response?: string
 }
 
 const addPublisher = () => {
   currentPublisher.value = {
-    name: `Publisher - ${publishers.value.length}`,
     payload: '',
-    response: ''
+    response: '',
+    subject: 'nats.subject'
   }
+  selectedPublisher.value = publishers.value.length
   publishers.value.push(currentPublisher.value)
+  window.localStorage.setItem('publishers', JSON.stringify(publishers.value))
+}
+
+const remove = () => {
+  if (publishers.value.length === 1) return
+  publishers.value.splice(selectedPublisher.value, 1)
+  selectedPublisher.value = 0
+  currentPublisher.value = publishers.value[selectedPublisher.value]
+  window.localStorage.setItem('publishers', JSON.stringify(publishers.value))
 }
 
 const publishers = ref<Publisher[]>([])
 onMounted(() => {
-  if (publishers.value.length === 0) addPublisher()
+  const data = window.localStorage.getItem('publishers')
+  publishers.value = data ? JSON.parse(data) : []
+  if (publishers.value.length === 0) {
+    addPublisher()
+  } else {
+    selectedPublisher.value = 0
+    currentPublisher.value = publishers.value[selectedPublisher.value]
+  }
 })
 </script>
