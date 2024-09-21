@@ -106,7 +106,12 @@ const connect = async () => {
       description: 'Connected successfully'
     })
   } catch (error) {
-    console.error(error)
+    toast({
+      duration: 5000,
+      variant: 'destructive',
+      title: 'Nats Connection',
+      description: `Failed to connect. ${error}`
+    })
   } finally {
     state.loading.value = false
   }
@@ -123,7 +128,12 @@ const disconnect = async () => {
       description: 'Disconnected successfully'
     })
   } catch (error) {
-    console.error(error)
+    toast({
+      duration: 5000,
+      variant: 'destructive',
+      title: 'Nats Connection',
+      description: `Failed to disconnect. ${error}`
+    })
   } finally {
     state.loading.value = false
   }
@@ -144,7 +154,12 @@ const request = async () => {
       window.localStorage.setItem('publishers', JSON.stringify(publishers.value))
     }
   } catch (error) {
-    console.error(error)
+    toast({
+      duration: 5000,
+      variant: 'destructive',
+      title: 'Nats',
+      description: `Failed to publish. ${error}`
+    })
   } finally {
     state.loading.value = false
   }
