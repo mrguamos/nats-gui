@@ -101,7 +101,7 @@ app.whenReady().then(() => {
         return {
           code: res.headers?.get('Nats-Service-Error-Code'),
           description: res.headers?.get('Nats-Service-Error'),
-          message: String(res.data)
+          message: res.data ? codec.decode(res.data) : ''
         } as Error
       }
       const json = codec.decode(res.data)
