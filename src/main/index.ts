@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { connect } from '@nats-io/transport-node'
 import * as nats from '@nats-io/nats-core'
+import { randomUUID } from 'crypto'
 
 let nc: nats.NatsConnection | null = null
 const codec = nats.JSONCodec()
@@ -96,7 +97,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('request', async (_, subject, data) => {
     if (nc) {
-      const res = await nc.request(subject, codec.encode(data))
+      const h = nats.headers()
+      h.set('Nats-Msg-Id', randomUUID())
+      const res = await nc.request(subject, codec.encode(data), {
+        timeout: 60000 * 5,
+        headers: h
+      })
       if (res.headers?.get('Nats-Service-Error-Code')) {
         return {
           code: res.headers?.get('Nats-Service-Error-Code'),
