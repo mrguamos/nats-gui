@@ -5,7 +5,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   connect: (natsUrl: string) => ipcRenderer.invoke('connect', natsUrl),
   disconnect: (natsUrl: string) => ipcRenderer.invoke('disconnect', natsUrl),
-  request: (subject: string, data: unknown) => ipcRenderer.invoke('request', subject, data),
+  request: (subject: string, data: unknown, natsHeaders?: unknown) =>
+    ipcRenderer.invoke('request', subject, data, natsHeaders),
   onDisconnected: (callback) =>
     ipcRenderer.on('nats-disconnected', (_event, value) => callback(value)),
   onReconnected: (callback) =>

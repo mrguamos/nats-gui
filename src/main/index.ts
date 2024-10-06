@@ -95,10 +95,13 @@ app.whenReady().then(() => {
     details?: string
   }
 
-  ipcMain.handle('request', async (_, subject, data) => {
+  ipcMain.handle('request', async (_, subject, data, natsHeaders?) => {
     if (nc) {
       const h = nats.headers()
       h.set('Nats-Msg-Id', randomUUID())
+      JSON.parse(natsHeaders).forEach((header) => {
+        h.set(header.key, header.value)
+      })
       const res = await nc.request(subject, codec.encode(data), {
         timeout: 60000 * 5,
         headers: h

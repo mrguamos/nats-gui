@@ -39,8 +39,20 @@
         <CardHeader>
           <CardTitle>Publish Message</CardTitle>
         </CardHeader>
-        <CardContent class="flex flex-col gap-y-3">
+        <CardContent class="flex flex-col gap-y-10">
           <Input v-model="currentPublisher.subject" placeholder="Subject" />
+          <div class="flex flex-col w-full max-h-64 overflow-y-auto border p-5 gap-y-3 rounded-lg">
+            <span>Headers</span>
+            <div v-for="(header, idx) of currentPublisher.headers" :key="idx" class="flex gap-5">
+              <Input v-model="header.key" class="w-1/2" placeholder="Key" />
+              <Input v-model="header.value" class="w-1/2" placeholder="Value" />
+              <Button @click="currentPublisher?.headers?.splice(idx, 1)">X</Button>
+            </div>
+            <div class="flex justify-end mt-10">
+              <Button @click="currentPublisher?.headers?.push({ key: '', value: '' })">+</Button>
+            </div>
+          </div>
+          <span>Payload</span>
           <JsonEditorVue
             v-model="currentPublisher.payload"
             :status-bar="false"
@@ -82,6 +94,11 @@ import JsonEditorVue from 'json-editor-vue'
 import { useDark, useToggle } from '@vueuse/core'
 import { useToast } from '@renderer/components/ui/toast/use-toast'
 import { useGlobalState } from '@renderer/composables/store'
+
+type NatsHeader = {
+  key: string
+  value: string
+}
 
 const state = useGlobalState()
 const isDark = useDark()
@@ -146,7 +163,8 @@ const request = async () => {
       if (currentPublisher.value?.payload) {
         const res = await window.api.request(
           currentPublisher.value?.subject,
-          JSON.parse(currentPublisher.value.payload)
+          JSON.parse(currentPublisher.value.payload),
+          JSON.stringify(currentPublisher.value.headers)
         )
         currentPublisher.value.response = JSON.stringify(res, null, 2)
       }
@@ -169,13 +187,15 @@ type Publisher = {
   subject: string
   payload?: string
   response?: string
+  headers?: NatsHeader[]
 }
 
 const addPublisher = () => {
   currentPublisher.value = {
     payload: '',
     response: '',
-    subject: 'nats.subject'
+    subject: 'nats.subject',
+    headers: []
   }
   selectedPublisher.value = publishers.value.length
   publishers.value.push(currentPublisher.value)
