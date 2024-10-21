@@ -103,7 +103,7 @@ app.whenReady().then(() => {
         h.set(header.key, header.value)
       })
       const res = await nc.request(subject, codec.encode(data), {
-        timeout: 60000 * 5,
+        timeout: 1000,
         headers: h
       })
       if (res.headers?.get('Nats-Service-Error-Code')) {
